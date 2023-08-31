@@ -5,6 +5,7 @@ import (
 	"github.com/hujun8610/gomylibrary/logger"
 	"io"
 	"net/http"
+	"strings"
 )
 
 var log = logger.GetLogger()
@@ -26,7 +27,7 @@ func PostRequest(url string, headers map[string]string, payload string) string {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		log.Fatalf("get response failed", err)
+		log.Fatalf("get response failed %v", err)
 	}
 
 	log.WithField("StatusCode", resp.StatusCode).Info("http status code")
@@ -36,4 +37,34 @@ func PostRequest(url string, headers map[string]string, payload string) string {
 	data, _ := io.ReadAll(resp.Body)
 	log.WithField("responseBody", string(data)).Info("response")
 	return string(data)
+}
+
+func PostFormRequest(urlstr string) string {
+	str := strings.Split(urlstr, "?")
+	if len(str) != 2 {
+		log.Errorf("split url string failed %v", str)
+		panic(nil)
+	}
+	return PostFormRequestWithPayLoad(str[0], str[1])
+}
+
+func PostFormRequestWithPayLoad(baseUrl string, payLoad string) string {
+	req, _ := http.NewRequest("POST", baseUrl, bytes.NewBufferString(payLoad))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("post request failed %v", err)
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	var buffer bytes.Buffer
+	_, err = io.Copy(&buffer, resp.Body)
+	if err != nil {
+		log.Errorf("read data from resp body failed")
+		panic(err)
+	}
+
+	return buffer.String()
 }
